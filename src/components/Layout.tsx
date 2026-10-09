@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { KeyRound, Coffee, LayoutDashboard, Store, ListVideo, Users, ScrollText, Menu, Moon, Sun, LogOut, RotateCcw, X } from 'lucide-react';
-import { toast } from 'sonner';
+import { KeyRound, Coffee, LayoutDashboard, Store, ListVideo, Users, ScrollText, Menu, Moon, Sun, LogOut, X } from 'lucide-react';
 import { logout } from '@/api';
-import { resetDemo, startLiveSimulation, useStore } from '@/store';
+import { startLiveSimulation } from '@/store';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { ConfirmDialog } from './ui/dialog';
 import { useCurrentUser } from '@/lib/auth';
 import { ChangePasswordDialog } from './ChangePasswordDialog';
 
@@ -36,7 +34,6 @@ export function Layout() {
   const loc = useLocation();
   const [open, setOpen] = useState(false);
   const [dark, setDark] = useTheme();
-  const [confirmReset, setConfirmReset] = useState(false);
   const [pwd, setPwd] = useState(false);
   const isAdmin = user.role === 'ADMIN';
   const items = isAdmin ? ADMIN_NAV : MANAGER_NAV;
@@ -69,15 +66,6 @@ export function Layout() {
           {label}
         </NavLink>
       ))}
-      <div className="mt-auto flex items-center gap-3 rounded-xl bg-muted/60 p-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-          {user.name.split(' ').map((p) => p[0]).slice(0, 2).join('')}
-        </div>
-        <div className="min-w-0">
-          <div className="truncate text-sm font-medium leading-tight">{user.name}</div>
-          <div className="text-xs text-muted-foreground">{isAdmin ? 'Головной офис' : `Кофеен: ${user.locationIds.length}`}</div>
-        </div>
-      </div>
     </div>
   );
 
@@ -107,25 +95,21 @@ export function Layout() {
             <span className="font-semibold">ТВ-меню</span>
           </div>
           <div className="flex-1" />
-          {isAdmin && (
-            <Button variant="ghost" size="sm" onClick={() => setConfirmReset(true)} title="Сбросить демо-данные">
-              <RotateCcw className="h-4 w-4" />
-              <span className="hidden md:inline">Сбросить демо-данные</span>
-            </Button>
-          )}
           <Button variant="ghost" size="icon" onClick={() => setPwd(true)} aria-label="Сменить пароль" title="Сменить пароль">
             <KeyRound className="h-[18px] w-[18px]" />
           </Button>
           <Button variant="ghost" size="icon" onClick={() => setDark(!dark)} aria-label="Сменить тему">
             {dark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
           </Button>
-          <div className="hidden text-right sm:block">
-            <div className="text-sm font-medium leading-tight">{user.name}</div>
-            <div className="text-xs text-muted-foreground">{isAdmin ? 'Администратор' : 'Управляющий'}</div>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+              {user.name.split(' ').map((p) => p[0]).slice(0, 2).join('')}
+            </div>
+            <div className="hidden leading-tight sm:block">
+              <div className="text-sm font-medium">{user.name}</div>
+              <div className="text-xs text-muted-foreground">{isAdmin ? 'Администратор' : 'Управляющий'}</div>
+            </div>
           </div>
-          <span className={cn('hidden rounded-full px-2.5 py-1 text-xs font-semibold sm:inline', isAdmin ? 'bg-primary text-primary-foreground' : 'bg-accent')}>
-            {isAdmin ? 'Админ' : 'Управляющий'}
-          </span>
           <Button
             variant="outline"
             size="icon"
@@ -143,20 +127,6 @@ export function Layout() {
         </main>
       </div>
       <ChangePasswordDialog open={pwd || !!user.mustChangePassword} onOpenChange={setPwd} forced={!!user.mustChangePassword} />
-      <ConfirmDialog
-        open={confirmReset}
-        onOpenChange={setConfirmReset}
-        title="Сбросить демо-данные?"
-        description="Все изменения будут потеряны, данные вернутся к исходному состоянию. Вы останетесь в системе."
-        confirmLabel="Сбросить"
-        destructive
-        onConfirm={() => {
-          const id = useStore.getState().currentUserId;
-          resetDemo();
-          useStore.setState({ currentUserId: id });
-          toast.success('Демо-данные сброшены');
-        }}
-      />
     </div>
   );
 }

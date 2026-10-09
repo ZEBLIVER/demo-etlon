@@ -59,10 +59,6 @@ if (typeof window !== 'undefined') {
   });
 }
 
-export function resetDemo() {
-  useStore.setState(buildSeed(), true);
-}
-
 export const currentUser = () => {
   const s = useStore.getState();
   const u = s.users.find((x) => x.id === s.currentUserId);
