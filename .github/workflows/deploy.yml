@@ -1,4 +1,4 @@
-# Сборка и публикация демо на GitHub Pages при каждом push в main
+﻿# РЎР±РѕСЂРєР° Рё РїСѓР±Р»РёРєР°С†РёСЏ РґРµРјРѕ РЅР° GitHub Pages РїСЂРё РєР°Р¶РґРѕРј push РІ main
 name: Deploy to GitHub Pages
 
 on:
@@ -22,11 +22,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run build
-      # SPA: прямые ссылки и F5 на /demo-etlon/locations/... отдают приложение вместо 404
+      # SPA: РїСЂСЏРјС‹Рµ СЃСЃС‹Р»РєРё Рё F5 РЅР° /demo-etlon/locations/... РѕС‚РґР°СЋС‚ РїСЂРёР»РѕР¶РµРЅРёРµ РІРјРµСЃС‚Рѕ 404
       - run: cp dist/index.html dist/404.html
       - uses: actions/upload-pages-artifact@v3
         with:
