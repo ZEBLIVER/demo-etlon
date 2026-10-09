@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { KeyRound, Coffee, LayoutDashboard, Store, Images, ListVideo, Users, ScrollText, Menu, Moon, Sun, LogOut, RotateCcw, X } from 'lucide-react';
+import { KeyRound, Coffee, LayoutDashboard, Store, ListVideo, Users, ScrollText, Menu, Moon, Sun, LogOut, RotateCcw, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { logout } from '@/api';
 import { resetDemo, startLiveSimulation, useStore } from '@/store';
@@ -13,8 +13,7 @@ import { ChangePasswordDialog } from './ChangePasswordDialog';
 const ADMIN_NAV: { to: string; label: string; icon: typeof Store; end?: boolean }[] = [
   { to: '/', label: 'Обзор', icon: LayoutDashboard, end: true },
   { to: '/locations', label: 'Кофейни', icon: Store },
-  { to: '/media', label: 'Медиатека', icon: Images },
-  { to: '/variants', label: 'Варианты меню', icon: ListVideo },
+  { to: '/menu', label: 'Меню', icon: ListVideo },
   { to: '/users', label: 'Пользователи', icon: Users },
   { to: '/audit', label: 'Журнал', icon: ScrollText },
 ];

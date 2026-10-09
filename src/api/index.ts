@@ -1,5 +1,5 @@
 import { useStore, currentUser } from '@/store';
-import type { AuditEntry, HistoryEntry, Location, Media, MenuVariant, Orientation, Role, Screen, TvModel, User, UserAccount } from '@/lib/types';
+import type { AuditEntry, HistoryEntry, Location, MenuVariant, Orientation, Role, Screen, TvModel, User, UserAccount } from '@/lib/types';
 import { computeStatus, genPassword, isAvailable, isProblem, uid } from '@/lib/utils';
 
 export class ApiError extends Error {
@@ -23,6 +23,12 @@ function me(): UserAccount {
 function admin(): UserAccount {
   const u = me();
   if (u.role !== 'ADMIN') throw new ApiError(403, 'Недостаточно прав');
+  return u;
+}
+/** Действие над телевизорами: админ везде, управляющий только в своих кофейнях (иначе 403) */
+function inScope(locationId: string): UserAccount {
+  const u = me();
+  if (!canSeeLocation(u, locationId)) throw new ApiError(403, 'Нет доступа к этой кофейне');
   return u;
 }
 function canSeeLocation(u: UserAccount, id: string) {
@@ -128,7 +134,7 @@ export async function createScreen(
   data: { number: number; orientation: Orientation; model: TvModel; comment: string },
 ): Promise<Screen> {
   await wait();
-  const u = admin();
+  const u = inScope(locationId);
   if (!Number.isInteger(data.number) || data.number < 1) throw new ApiError(400, 'Номер телевизора: целое число от 1');
   if (st().screens.some((x) => x.locationId === locationId && x.number === data.number)) throw new ApiError(409, `ТВ ${data.number} в этой кофейне уже есть`);
   const sc: Screen = {
@@ -143,9 +149,9 @@ export async function createScreen(
 }
 export async function deleteScreen(screenId: string): Promise<void> {
   await wait();
-  const u = admin();
   const screen = st().screens.find((s) => s.id === screenId);
   if (!screen) throw new ApiError(404, 'Экран не найден');
+  const u = inScope(screen.locationId);
   set((s) => ({ screens: s.screens.filter((x) => x.id !== screenId) }));
   log(u.name, 'Удаление экрана', screenLabel(screen));
 }
@@ -196,15 +202,20 @@ export function playerAck(code: string, num: number) {
   const sc = findByLink(code, num);
   if (sc) simulateScreenAck(sc.id);
 }
-export async function resetScreenCache(screenId: string): Promise<void> {
+/**
+ * Перевыпуск ссылки: телевизор получает новый номер в кофейне, а значит и новый адрес /<код>/<номер>.
+ * Старая ссылка перестаёт работать, новую нужно ввести в URL Launcher. Админ везде, управляющий в своих кофейнях.
+ */
+export async function reissueLink(screenId: string): Promise<Screen> {
   await wait();
-  const u = admin();
-  const screen = st().screens.find((s) => s.id === screenId);
+  const screen = st().screens.find((x) => x.id === screenId);
   if (!screen) throw new ApiError(404, 'Экран не найден');
-  set((s) => ({
-    screens: s.screens.map((x) => (x.id === screenId ? { ...x, version: x.version + 1, versionChangedAt: new Date().toISOString(), lastError: null } : x)),
-  }));
-  log(u.name, 'Сброс кэша', screenLabel(screen));
+  const u = inScope(screen.locationId);
+  const number = Math.max(0, ...st().screens.filter((x) => x.locationId === screen.locationId).map((x) => x.number)) + 1;
+  const next: Screen = { ...screen, number, name: `ТВ ${number}`, lastSeenAt: new Date(0).toISOString() };
+  set((s) => ({ screens: s.screens.map((x) => (x.id === screenId ? next : x)) }));
+  log(u.name, 'Перевыпуск ссылки', `${locName(screen.locationId)} / ${screen.name} → ${next.name}`);
+  return next;
 }
 /** Список доступных телевизору вариантов: стандартные включаются/отключаются, остальные назначаются */
 export async function updateScreenVariants(screenId: string, availableIds: string[]): Promise<Screen> {
@@ -230,54 +241,7 @@ export async function getScreenHistory(screenId: string): Promise<HistoryEntry[]
   return st().history.filter((h) => h.screenId === screenId);
 }
 
-// ---------- Медиа ----------
-export async function getMedia(): Promise<Media[]> {
-  await wait();
-  me();
-  return st().media;
-}
-const COLORS = ['#6b3f1d', '#b4561a', '#c98a5a', '#d9a441', '#8a5a44', '#a65e2e', '#c07a3a'];
-const ALLOWED: Record<string, string> = { 'image/jpeg': 'JPG', 'image/webp': 'WEBP', 'video/mp4': 'MP4', 'video/webm': 'WEBM' };
-export async function uploadMedia(file: { name: string; size: number; type: string }): Promise<Media> {
-  await wait();
-  const u = admin();
-  // формат проверяем по содержимому (в браузере это MIME), а не по расширению
-  if (!ALLOWED[file.type]) throw new ApiError(400, `«${file.name}»: формат не поддерживается. Допустимы JPG, WEBP, MP4, WEBM`);
-  if (file.size === 0) throw new ApiError(400, `«${file.name}»: файл пустой или повреждён`);
-  if (file.size > 10 * 1024 * 1024) throw new ApiError(400, `«${file.name}»: файл тяжелее 10 МБ (${(file.size / 1024 / 1024).toFixed(1)} МБ). Сожмите его и загрузите снова`);
-  const fingerprint = `${file.name}|${file.size}|${file.type}`;
-  const dup = st().media.find((m) => m.fingerprint === fingerprint);
-  if (dup) throw new ApiError(409, `«${file.name}»: такой файл уже есть в медиатеке («${dup.name}»)`);
-  const isVideo = file.type.startsWith('video/');
-  const m: Media = {
-    id: uid('m'), name: file.name.replace(/\.[^.]+$/, ''), type: isVideo ? 'video' : 'image',
-    mime: file.type, sizeBytes: file.size, width: 1920, height: 1080, durationSec: isVideo ? 12 : undefined,
-    previewColor: COLORS[Math.floor(Math.random() * COLORS.length)], createdAt: new Date().toISOString(), fingerprint,
-  };
-  set((s) => ({ media: [m, ...s.media] }));
-  log(u.name, 'Загрузка медиа', m.name);
-  return m;
-}
-/** Сам файл не меняется, только название (телевизоры кэшируют файлы) */
-export async function renameMedia(id: string, name: string): Promise<void> {
-  await wait();
-  const u = admin();
-  const m = st().media.find((x) => x.id === id);
-  if (!m) throw new ApiError(404, 'Файл не найден');
-  set((s) => ({ media: s.media.map((x) => (x.id === id ? { ...x, name: name.trim() } : x)) }));
-  log(u.name, 'Переименование медиа', `${m.name} → ${name.trim()}`);
-}
-export async function deleteMedia(id: string): Promise<void> {
-  await wait();
-  const u = admin();
-  const used = st().variants.filter((v) => v.mediaId === id);
-  if (used.length) throw new ApiError(409, `Файл используется в вариантах: ${used.map((v) => v.name).join(', ')}`);
-  const m = st().media.find((x) => x.id === id);
-  set((s) => ({ media: s.media.filter((x) => x.id !== id) }));
-  log(u.name, 'Удаление медиа', m?.name ?? id);
-}
-
-// ---------- Варианты меню ----------
+// ---------- Меню (варианты = загруженные файлы) ----------
 export async function getVariants(): Promise<MenuVariant[]> {
   await wait();
   me();
@@ -290,30 +254,68 @@ export async function getVariant(id: string): Promise<MenuVariant> {
   if (!v) throw new ApiError(404, 'Вариант не найден');
   return v;
 }
-export async function createVariant(data: { name: string; orientation: Orientation; mediaId: string | null; standard: boolean }): Promise<MenuVariant> {
+const COLORS = ['#6b3f1d', '#b4561a', '#c98a5a', '#d9a441', '#8a5a44', '#a65e2e', '#c07a3a'];
+const ALLOWED = ['image/jpeg', 'image/webp', 'video/mp4', 'video/webm'];
+function checkFile(file: { name: string; size: number; type: string }) {
+  // формат проверяем по содержимому (в браузере это MIME), а не по расширению
+  if (!ALLOWED.includes(file.type)) throw new ApiError(400, `«${file.name}»: формат не поддерживается. Допустимы JPG, WEBP, MP4, WEBM`);
+  if (file.size === 0) throw new ApiError(400, `«${file.name}»: файл пустой или повреждён`);
+  if (file.size > 10 * 1024 * 1024) throw new ApiError(400, `«${file.name}»: файл тяжелее 10 МБ (${(file.size / 1024 / 1024).toFixed(1)} МБ). Сожмите его и загрузите снова`);
+  const fingerprint = `${file.name}|${file.size}|${file.type}`;
+  const dup = st().variants.find((v) => v.fingerprint === fingerprint);
+  if (dup) throw new ApiError(409, `«${file.name}»: такой файл уже есть (вариант «${dup.name}»)`);
+  const isVideo = file.type.startsWith('video/');
+  return { fingerprint, isVideo };
+}
+/** Загрузка файла = создание варианта меню: админ задаёт название и ориентацию */
+export async function uploadVariant(
+  file: { name: string; size: number; type: string },
+  data: { name: string; orientation: Orientation },
+): Promise<MenuVariant> {
   await wait();
   const u = admin();
-  if (!data.mediaId) throw new ApiError(400, 'Вариант без файла сохранить нельзя: выберите файл из медиатеки');
-  const v: MenuVariant = { id: uid('v'), name: data.name.trim(), orientation: data.orientation, mediaId: data.mediaId, standard: data.standard, updatedAt: new Date().toISOString(), version: 1 };
+  const { fingerprint, isVideo } = checkFile(file);
+  const portrait = data.orientation === 'portrait';
+  const now = new Date().toISOString();
+  const v: MenuVariant = {
+    id: uid('v'), name: data.name.trim() || file.name.replace(/\.[^.]+$/, ''), orientation: data.orientation,
+    kind: isVideo ? 'video' : 'image', mime: file.type, sizeBytes: file.size,
+    width: portrait ? 1080 : 1920, height: portrait ? 1920 : 1080, durationSec: isVideo ? 12 : undefined,
+    fileName: file.name.replace(/\.[^.]+$/, ''), previewColor: COLORS[Math.floor(Math.random() * COLORS.length)], fingerprint,
+    standard: true, createdAt: now, updatedAt: now, version: 1,
+  };
   set((s) => ({ variants: [...s.variants, v] }));
-  log(u.name, 'Создание варианта меню', v.name);
+  log(u.name, 'Загрузка файла меню', v.name);
   return v;
 }
-export async function updateVariant(id: string, data: Partial<Pick<MenuVariant, 'name' | 'orientation' | 'mediaId'>>): Promise<MenuVariant> {
+/** Можно менять название и файл. Каждое сохранение = новая версия, телевизор скачивает её целиком. */
+export async function updateVariant(
+  id: string,
+  data: { name?: string; file?: { name: string; size: number; type: string } },
+): Promise<MenuVariant> {
   await wait();
   const u = admin();
   const cur = st().variants.find((x) => x.id === id);
   if (!cur) throw new ApiError(404, 'Вариант не найден');
-  if ('mediaId' in data && !data.mediaId) throw new ApiError(400, 'Вариант без файла сохранить нельзя: выберите файл из медиатеки');
-  // каждое сохранение создаёт новую версию; телевизор скачивает её целиком
-  const next: MenuVariant = { ...cur, ...data, updatedAt: new Date().toISOString(), version: cur.version + 1 };
+  if (data.name !== undefined && !data.name.trim()) throw new ApiError(400, 'Название не может быть пустым');
+  let patch: Partial<MenuVariant> = {};
+  if (data.file) {
+    const { fingerprint, isVideo } = checkFile(data.file);
+    const portrait = cur.orientation === 'portrait';
+    patch = {
+      kind: isVideo ? 'video' : 'image', mime: data.file.type, sizeBytes: data.file.size, durationSec: isVideo ? 12 : undefined,
+      width: portrait ? 1080 : 1920, height: portrait ? 1920 : 1080, fileName: data.file.name.replace(/\.[^.]+$/, ''), fingerprint,
+      previewColor: COLORS[Math.floor(Math.random() * COLORS.length)],
+    };
+  }
   const now = new Date().toISOString();
+  const next: MenuVariant = { ...cur, ...patch, name: data.name?.trim() ?? cur.name, updatedAt: now, version: cur.version + 1 };
   set((s) => ({
     variants: s.variants.map((x) => (x.id === id ? next : x)),
     // экраны, где вариант стоит, получают новую версию
     screens: s.screens.map((x) => (x.variantId === id ? { ...x, version: x.version + 1, versionChangedAt: now } : x)),
   }));
-  log(u.name, 'Изменение варианта меню', next.name);
+  log(u.name, data.file ? 'Замена файла варианта' : 'Изменение варианта меню', next.name);
   // устройства подтягивают обновление автоматически
   const affected = st().screens.filter((x) => x.variantId === id).map((x) => x.id);
   setTimeout(() => affected.forEach(simulateScreenAck), 6000);
@@ -330,7 +332,7 @@ export async function deleteVariant(id: string): Promise<void> {
     variants: s.variants.filter((x) => x.id !== id),
     screens: s.screens.map((x) => ({ ...x, allowedVariantIds: x.allowedVariantIds.filter((a) => a !== id) })),
   }));
-  log(u.name, 'Удаление варианта меню', v.name);
+  log(u.name, 'Удаление варианта меню и файла', v.name);
 }
 /**
  * Доступность варианта по телевизорам. Стандартный: доступен всем подходящей ориентации, screenIds — где доступен (остальные отключаются).

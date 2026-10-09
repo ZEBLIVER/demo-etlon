@@ -7,9 +7,8 @@ import OverviewPage from '@/pages/OverviewPage';
 import LocationsPage from '@/pages/LocationsPage';
 import LocationPage from '@/pages/LocationPage';
 import ScreenPage from '@/pages/ScreenPage';
-import MediaPage from '@/pages/MediaPage';
-import VariantsPage from '@/pages/VariantsPage';
-import VariantEditorPage from '@/pages/VariantEditorPage';
+import MenuPage from '@/pages/MenuPage';
+import MenuItemPage from '@/pages/MenuItemPage';
 import UsersPage from '@/pages/UsersPage';
 import AuditPage from '@/pages/AuditPage';
 import PlayerPage from '@/pages/PlayerPage';
@@ -40,10 +39,8 @@ export function AppRoutes() {
         <Route path="locations" element={<LocationsPage />} />
         <Route path="locations/:id" element={<LocationPage />} />
         <Route path="screens/:id" element={<ScreenPage />} />
-        <Route path="media" element={<AdminOnly><MediaPage /></AdminOnly>} />
-        <Route path="variants" element={<AdminOnly><VariantsPage /></AdminOnly>} />
-        <Route path="variants/new" element={<AdminOnly><VariantEditorPage /></AdminOnly>} />
-        <Route path="variants/:id" element={<AdminOnly><VariantEditorPage /></AdminOnly>} />
+        <Route path="menu" element={<AdminOnly><MenuPage /></AdminOnly>} />
+        <Route path="menu/:id" element={<AdminOnly><MenuItemPage /></AdminOnly>} />
         <Route path="users" element={<AdminOnly><UsersPage /></AdminOnly>} />
         <Route path="audit" element={<AdminOnly><AuditPage /></AdminOnly>} />
         <Route path="*" element={<NoAccess message="Такой страницы нет." />} />

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import * as Tabs from '@radix-ui/react-tabs';
-import { ArrowLeft, Check, Clock, Copy, Download, Eraser, ExternalLink, History, Layers, Loader2, Send, SlidersHorizontal, Trash2, Tv } from 'lucide-react';
+import { ArrowLeft, Check, Clock, Copy, Download, ExternalLink, History, Layers, Link2, Loader2, Send, SlidersHorizontal, Trash2, Tv } from 'lucide-react';
 import { toast } from 'sonner';
-import { deleteScreen, getScreen, getScreenHistory, resetScreenCache, setCurrentVariant, simulateScreenAck, updateScreenVariants } from '@/api';
+import { deleteScreen, getScreen, getScreenHistory, reissueLink, setCurrentVariant, simulateScreenAck, updateScreenVariants } from '@/api';
 import { EmptyState, ErrorView, errMsg, PageHeader, run, useApi } from '@/components/common';
 import { StatusBadge } from '@/components/StatusBadge';
 import { VariantPreview } from '@/components/VariantPreview';
@@ -58,7 +58,7 @@ export default function ScreenPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
   const [step, setStep] = useState<number | null>(null);
-  const [confirm, setConfirm] = useState<'cache' | 'delete' | null>(null);
+  const [confirm, setConfirm] = useState<'link' | 'delete' | null>(null);
   const [allowDlg, setAllowDlg] = useState(false);
   const [allowDraft, setAllowDraft] = useState<string[]>([]);
   const history = useApi(() => getScreenHistory(id), [id, screen?.version]);
@@ -271,35 +271,29 @@ export default function ScreenPage() {
             </div>
           </Card>
 
-          {isAdmin && (
-            <Card className="space-y-2 p-5">
-              <h2 className="mb-2 font-semibold">Администрирование</h2>
+          <Card className="space-y-2 p-5">
+            <h2 className="mb-2 font-semibold">Управление телевизором</h2>
+            {isAdmin && (
               <Button variant="outline" className="w-full justify-start" onClick={() => { setAllowDraft(available.map((v) => v.id)); setAllowDlg(true); }}>
                 <Layers className="h-4 w-4" />Доступные варианты
               </Button>
-              <Button variant="outline" className="w-full justify-start" onClick={() => setConfirm('cache')}><Eraser className="h-4 w-4" />Сбросить кэш</Button>
-              <Button variant="outline" className="w-full justify-start text-red-600" onClick={() => setConfirm('delete')}><Trash2 className="h-4 w-4" />Удалить экран</Button>
-            </Card>
-          )}
+            )}
+            <Button variant="outline" className="w-full justify-start" onClick={() => setConfirm('link')}><Link2 className="h-4 w-4" />Перевыпустить ссылку</Button>
+            <Button variant="outline" className="w-full justify-start text-red-600" onClick={() => setConfirm('delete')}><Trash2 className="h-4 w-4" />Удалить экран</Button>
+          </Card>
         </div>
       </div>
 
       <ConfirmDialog
-        open={confirm === 'cache'}
+        open={confirm === 'link'}
         onOpenChange={(o) => !o && setConfirm(null)}
-        title="Сбросить кэш экрана?"
-        description="Телевизор заново скачает всё меню. Это займёт несколько минут."
-        confirmLabel="Сбросить"
+        title="Перевыпустить ссылку?"
+        description="Телевизор получит новый номер, а значит и новый адрес. Старая ссылка перестанет работать, новую нужно будет ввести в URL Launcher телевизора."
+        confirmLabel="Перевыпустить"
+        destructive
         onConfirm={async () => {
-          try {
-            await resetScreenCache(screen.id);
-            toast.success('Команда сброса кэша отправлена');
-          } catch (e) {
-            toast.error(errMsg(e));
-            return;
-          }
-          setStep(1);
-          setTimeout(() => { simulateScreenAck(screen.id); setStep(2); }, 6000);
+          const r = await run(reissueLink(screen.id), 'Ссылка перевыпущена');
+          if (r) toast.info(`Новая ссылка: ${screenLink(location.code, r.number)}`);
         }}
       />
       <ConfirmDialog

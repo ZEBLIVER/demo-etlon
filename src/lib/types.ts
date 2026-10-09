@@ -26,14 +26,18 @@ export interface Screen {
   versionChangedAt?: string;
 }
 
-export interface Media { id: string; name: string; type: 'image' | 'video'; mime: string; sizeBytes: number; width: number; height: number; durationSec?: number; previewColor: string; createdAt: string; fingerprint?: string; }
-
-/** Вариант меню = один файл (картинка висит постоянно, видео крутится по кругу). Слайдшоу нет. */
+/**
+ * Вариант меню = один файл (картинка висит постоянно, видео крутится по кругу). Отдельной медиатеки нет:
+ * админ загружает файл в разделе «Меню», задаёт название и ориентацию, и появляется вариант.
+ */
 export interface MenuVariant {
-  id: string; name: string; orientation: Orientation; mediaId: string;
+  id: string; name: string; orientation: Orientation;
+  kind: 'image' | 'video'; mime: string; sizeBytes: number; width: number; height: number; durationSec?: number;
+  /** имя исходного файла (для превью и защиты от дубликатов) */
+  fileName: string; previewColor: string; fingerprint?: string;
   /** стандартный: доступен всем телевизорам подходящей ориентации; иначе только назначенным */
   standard: boolean;
-  updatedAt: string; version: number;
+  createdAt: string; updatedAt: string; version: number;
 }
 export interface AuditEntry { id: string; userName: string; action: string; target: string; createdAt: string; }
 export interface HistoryEntry { id: string; screenId: string; userName: string; fromVariantId: string | null; toVariantId: string | null; createdAt: string; }
@@ -42,7 +46,6 @@ export interface DemoState {
   users: UserAccount[];
   locations: Location[];
   screens: Screen[];
-  media: Media[];
   variants: MenuVariant[];
   audit: AuditEntry[];
   history: HistoryEntry[];

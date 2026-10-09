@@ -3,7 +3,7 @@ import type { DemoState } from '@/lib/types';
 import { buildSeed } from '@/mocks/seed';
 import { computeStatus, isConnected, neverSeen } from '@/lib/utils';
 
-const KEY = 'tv-menu-demo-v3';
+const KEY = 'tv-menu-demo-v4';
 
 function load(): DemoState {
   try {

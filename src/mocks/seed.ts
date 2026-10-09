@@ -1,4 +1,4 @@
-import type { AuditEntry, DemoState, HistoryEntry, Location, Media, MenuVariant, Screen, UserAccount } from '@/lib/types';
+import type { AuditEntry, DemoState, HistoryEntry, Location, MenuVariant, Screen, UserAccount } from '@/lib/types';
 
 const MIN = 60_000, H = 60 * MIN, D = 24 * H;
 
@@ -24,42 +24,28 @@ export function buildSeed(): DemoState {
   ];
   const locations: Location[] = locs.map(([k, name, address]) => ({ id: `l_${k}`, name, code: k === '7line' ? '7liniya' : k, address: `Санкт-Петербург, ${address}`, city: 'Санкт-Петербург' }));
 
-  interface M { id: string; name: string; type: 'image' | 'video'; w: number; h: number; c: string; s: number; d?: number }
-  const rawMedia: M[] = [
-    { id: 'm1', name: 'Кофе классика', type: 'image', w: 1920, h: 1080, c: '#6b3f1d', s: 1.4 },
-    { id: 'm2', name: 'Сезонное меню осень', type: 'image', w: 1920, h: 1080, c: '#b4561a', s: 1.9 },
-    { id: 'm3', name: 'Десерты', type: 'image', w: 1920, h: 1080, c: '#c98a5a', s: 1.7 },
-    { id: 'm4', name: 'Завтраки', type: 'image', w: 1920, h: 1080, c: '#d9a441', s: 1.6 },
-    { id: 'm5', name: 'Промо тыквенный латте', type: 'video', w: 1920, h: 1080, c: '#d2691e', s: 8.4, d: 15 },
-    { id: 'm6', name: 'Прайс Брусника/Лето', type: 'image', w: 1920, h: 1080, c: '#8a5a44', s: 1.3 },
-    { id: 'm7', name: 'Чай и какао', type: 'image', w: 1920, h: 1080, c: '#7a4b2a', s: 1.2 },
-    { id: 'm8', name: 'Эспрессо-бар', type: 'image', w: 1920, h: 1080, c: '#4a2c17', s: 1.5 },
-    { id: 'm9', name: 'Выпечка', type: 'image', w: 1920, h: 1080, c: '#c07a3a', s: 1.8 },
-    { id: 'm10', name: 'Сэндвичи и салаты', type: 'image', w: 1920, h: 1080, c: '#a65e2e', s: 1.6 },
-    { id: 'm11', name: 'Акция 2+1', type: 'video', w: 1920, h: 1080, c: '#b5472a', s: 5.1, d: 10 },
-    { id: 'm12', name: 'Вертикальное меню — кофе', type: 'image', w: 1080, h: 1920, c: '#6b3f1d', s: 1.5 },
-    { id: 'm13', name: 'Вертикальное меню — авторские', type: 'image', w: 1080, h: 1920, c: '#8c4a2a', s: 1.4 },
-    { id: 'm14', name: 'Новинка: раф солёная карамель', type: 'video', w: 1920, h: 1080, c: '#c8873a', s: 6.7, d: 12 },
-    { id: 'm15', name: 'Бейглы и тосты', type: 'image', w: 1920, h: 1080, c: '#d6a15e', s: 1.3 },
+  // Отдельной медиатеки нет: вариант меню = загруженный файл (картинка или видео) + название и ориентация.
+  // Стандартные варианты доступны всем телевизорам своей ориентации, «Прайс Брусника/Лето» только Бруснике и Лету.
+  interface V { id: string; name: string; file: string; kind?: 'video'; o?: 'portrait'; mb: number; sec?: number; c: string; std?: false; ver: number; ago: number }
+  const raw: V[] = [
+    { id: 'v1', name: 'Основной прайс', file: 'Кофе классика', mb: 1.4, c: '#6b3f1d', ver: 4, ago: 3 },
+    { id: 'v2', name: 'Прайс Брусника/Лето', file: 'Прайс Брусника/Лето', mb: 1.3, c: '#8a5a44', ver: 2, ago: 6, std: false },
+    { id: 'v3', name: 'Завтраки', file: 'Завтраки', mb: 1.6, c: '#d9a441', ver: 3, ago: 5 },
+    { id: 'v4', name: 'Десерты', file: 'Десерты', mb: 1.7, c: '#c98a5a', ver: 2, ago: 2 },
+    { id: 'v5', name: 'Промо осень (видео)', file: 'Промо тыквенный латте', kind: 'video', mb: 8.4, sec: 15, c: '#d2691e', ver: 1, ago: 1 },
+    { id: 'v6', name: 'Вертикальный — напитки', file: 'Вертикальное меню — кофе', o: 'portrait', mb: 1.5, c: '#6b3f1d', ver: 2, ago: 4 },
+    { id: 'v7', name: 'Акцент на раф (видео)', file: 'Новинка: раф солёная карамель', kind: 'video', mb: 6.7, sec: 12, c: '#c8873a', ver: 1, ago: 1 },
+    { id: 'v8', name: 'Сезонное меню осень', file: 'Сезонное меню осень', mb: 1.9, c: '#b4561a', ver: 2, ago: 2 },
+    { id: 'v9', name: 'Эспрессо-бар', file: 'Эспрессо-бар', mb: 1.5, c: '#4a2c17', ver: 1, ago: 8 },
+    { id: 'v10', name: 'Выпечка и бейглы', file: 'Выпечка', mb: 1.8, c: '#c07a3a', ver: 1, ago: 9 },
+    { id: 'v11', name: 'Акция 2+1 (видео)', file: 'Акция 2+1', kind: 'video', mb: 5.1, sec: 10, c: '#b5472a', ver: 1, ago: 10 },
+    { id: 'v12', name: 'Вертикальный — авторские', file: 'Вертикальное меню — авторские', o: 'portrait', mb: 1.4, c: '#8c4a2a', ver: 1, ago: 12 },
   ];
-  const media: Media[] = rawMedia.map((m, i) => ({
-    id: m.id, name: m.name, type: m.type,
-    mime: m.type === 'video' ? 'video/mp4' : 'image/jpeg',
-    sizeBytes: Math.round(m.s * 1024 * 1024), width: m.w, height: m.h,
-    durationSec: m.d, previewColor: m.c, createdAt: t((20 - i) * D / 2),
+  const variants: MenuVariant[] = raw.map((r) => ({
+    id: r.id, name: r.name, orientation: r.o ?? 'landscape', kind: r.kind ?? 'image', mime: r.kind ? 'video/mp4' : 'image/jpeg',
+    sizeBytes: Math.round(r.mb * 1024 * 1024), width: r.o ? 1080 : 1920, height: r.o ? 1920 : 1080, durationSec: r.sec,
+    fileName: r.file, previewColor: r.c, standard: r.std ?? true, version: r.ver, createdAt: t((r.ago + 8) * D), updatedAt: t(r.ago * D),
   }));
-
-  // Вариант = один файл. Стандартные доступны всем телевизорам своей ориентации, v2 — только Бруснике и Лету.
-  const variants: MenuVariant[] = [
-    { id: 'v1', name: 'Основной прайс', orientation: 'landscape', mediaId: 'm1', standard: true, version: 4, updatedAt: t(3 * D) },
-    { id: 'v2', name: 'Прайс Брусника/Лето', orientation: 'landscape', mediaId: 'm6', standard: false, version: 2, updatedAt: t(6 * D) },
-    { id: 'v3', name: 'Завтраки', orientation: 'landscape', mediaId: 'm4', standard: true, version: 3, updatedAt: t(5 * D) },
-    { id: 'v4', name: 'Десерты', orientation: 'landscape', mediaId: 'm3', standard: true, version: 2, updatedAt: t(2 * D) },
-    { id: 'v5', name: 'Промо осень (видео)', orientation: 'landscape', mediaId: 'm5', standard: true, version: 1, updatedAt: t(1 * D) },
-    { id: 'v6', name: 'Вертикальный — напитки', orientation: 'portrait', mediaId: 'm12', standard: true, version: 2, updatedAt: t(4 * D) },
-    { id: 'v7', name: 'Акцент на раф (видео)', orientation: 'landscape', mediaId: 'm14', standard: true, version: 1, updatedAt: t(1 * D) },
-    { id: 'v8', name: 'Сезонное меню осень', orientation: 'landscape', mediaId: 'm2', standard: true, version: 2, updatedAt: t(2 * D) },
-  ];
 
   type S = [string, string | null, ('landscape' | 'portrait')?];
   const plan: Record<string, S[]> = {
@@ -132,7 +118,7 @@ export function buildSeed(): DemoState {
     ({ id: `a${n}`, userName, action, target, createdAt: t(ago) });
   const audit: AuditEntry[] = [
     a(1, 'Мария Соколова', 'Создание варианта меню', 'Промо осень (видео)', 1 * D + 30 * MIN),
-    a(2, 'Мария Соколова', 'Загрузка медиа', 'Новинка: раф солёная карамель', 1 * D + 2 * H),
+    a(2, 'Мария Соколова', 'Загрузка файла меню', 'Новинка: раф солёная карамель', 1 * D + 2 * H),
     a(3, 'Илья Петров', 'Переключение меню', 'Литейный / ТВ 2', 1 * D + 2 * H),
     a(4, 'Анна Белова', 'Переключение меню', 'Брусника / ТВ 1', 1 * D),
     a(5, 'Мария Соколова', 'Создание пользователя', 'Павел Миронов', 12 * D),
@@ -144,12 +130,12 @@ export function buildSeed(): DemoState {
     a(11, 'Мария Соколова', 'Добавление экрана', 'Головина / ТВ 2', 3 * D + 4 * H),
     a(12, 'Мария Соколова', 'Отключение пользователя', 'Сергей Волков', 3 * D),
     a(13, 'Анна Белова', 'Переключение меню', 'Лето / ТВ 1', 3 * D),
-    a(14, 'Мария Соколова', 'Загрузка медиа', 'Бейглы и тосты', 4 * D + 2 * H),
+    a(14, 'Мария Соколова', 'Загрузка файла меню', 'Выпечка и бейглы', 4 * D + 2 * H),
     a(15, 'Илья Петров', 'Переключение меню', 'Литейный / ТВ 1', 2 * D + 3 * H),
     a(16, 'Мария Соколова', 'Создание кофейни', 'Вами', 9 * D),
     a(17, 'Мария Соколова', 'Изменение доступа к вариантам', 'Нарвские ворота / ТВ 2', 6 * H),
     a(18, 'Мария Соколова', 'Создание варианта меню', 'Вертикальный — напитки', 4 * D),
   ].sort((x, y) => +new Date(y.createdAt) - +new Date(x.createdAt));
 
-  return { users, locations, screens, media, variants, audit, history, currentUserId: null };
+  return { users, locations, screens, variants, audit, history, currentUserId: null };
 }

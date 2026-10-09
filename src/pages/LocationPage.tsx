@@ -58,18 +58,22 @@ export default function LocationPage() {
         back={<Link to="/locations" className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" />Все кофейни</Link>}
         title={loading ? <Skeleton className="h-8 w-56" /> : data!.location.name}
         subtitle={data?.location.address}
-        actions={isAdmin && (
+        actions={
           <>
+            {isAdmin && (
+              <>
             <Button variant="outline" onClick={() => { setLName(data?.location.name ?? ''); setLAddr(data?.location.address ?? ''); setEditDlg(true); }}><Pencil className="h-4 w-4" />Изменить</Button>
             <Button variant="outline" onClick={() => setArchive(true)}><Archive className="h-4 w-4" />Архивировать</Button>
+              </>
+            )}
             <Button onClick={open}><Plus className="h-4 w-4" />Добавить экран</Button>
           </>
-        )}
+        }
       />
       {loading ? (
         <GridSkeleton n={3} h="h-72" />
       ) : screens.length === 0 ? (
-        <EmptyState icon={Monitor} title="Экранов пока нет" hint={isAdmin ? 'Добавьте первый телевизор и вставьте ссылку в его URL Launcher.' : 'Обратитесь к администратору.'} />
+        <EmptyState icon={Monitor} title="Экранов пока нет" hint="Добавьте первый телевизор и вставьте выданную ссылку в его URL Launcher." />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{screens.map((s) => <ScreenCard key={s.id} screen={s} />)}</div>
       )}
