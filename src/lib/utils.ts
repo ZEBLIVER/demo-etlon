@@ -49,7 +49,7 @@ export const LINK_HOST = 'https://etlonmenu.ru';
 /** Ссылка телевизора: код кофейни + номер, например https://etlonmenu.ru/baza/3 */
 export const screenLink = (code: string, number: number) => `${LINK_HOST}/${code}/${number}`;
 /** Рабочий адрес заглушки плеера внутри демо */
-export const demoPlayerPath = (code: string, number: number) => `/${code}/${number}`;
+export const demoPlayerPath = (code: string, number: number) => `${import.meta.env.BASE_URL}${code}/${number}`;
 
 /** Доступен ли вариант телевизору: стандартные — всем подходящей ориентации (кроме отключённых), остальные — только назначенным */
 export function isAvailable(screen: Screen, v: MenuVariant): boolean {

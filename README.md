@@ -13,6 +13,18 @@ npm run dev      # http://127.0.0.1:5173
 npm run build    # проверка типов + сборка
 ```
 
+## Публикация на GitHub Pages
+
+Демо: https://zebliver.github.io/demo-etlon/
+
+Сайт собирается и выкладывается сам при каждом `git push` в `main` (`.github/workflows/deploy.yml`).
+Один раз в репозитории нужно включить Settings → Pages → Source: **GitHub Actions**.
+
+- В сборке сайт лежит в подпапке `/demo-etlon/` (`base` в `vite.config.ts`), локальный `npm run dev` работает с корня.
+- Прямые ссылки и обновление страницы работают через копию `index.html` в `404.html`.
+- Данные у каждого посетителя свои (в его браузере), изменения одного человека другие не видят.
+- Проверить сборку локально: `npm run build && npm run preview`, затем открыть http://127.0.0.1:4173/demo-etlon/
+
 ## Демо-учётки
 
 | Логин | Пароль | Роль |
